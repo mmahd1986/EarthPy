@@ -29,7 +29,7 @@ fi
 
 
 # Delete previous data, files, etc
-rm -rf Test_Comp/Split_Data_Files rules_file_pl.txt \
+rm -rf Data/Split_Data_Files rules_file_pl.txt \
     rules_file_sl.txt pl_split.log sl_split.log \
     pl_monthly_data_file_list.txt sl_monthly_data_file_list.txt \
     pl_split_data_file_list.txt sl_split_data_file_list.txt \

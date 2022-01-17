@@ -12,10 +12,11 @@
 
 
 # Input parameters
-ncpus=18             # Number of processes.
-compress=1           # 1 to compress the files, 0 not to.
-replaceregcomp=0     # 1 replaces uncompressed files with  
-                     #   compressed ones, 0 keeps both.
+ncpus=24              # Number of processes.
+compress=1            # 1 to compress the files, 0 not to.
+comp_type='grid_jpeg' # Compression type: grid_jpeg or grid_png.
+replaceregcomp=0      # 1 replaces uncompressed files with  
+                      #   compressed ones, 0 keeps both.
 
 
 # Loading modules
@@ -81,6 +82,7 @@ parallel -j ${ncpus} ~/eccodes/bin/grib_filter rules_file_sl.txt :::: sl_monthly
     &> sl_split.log
 echo "Done."
 
+
 # If needed, compress the files
 if [ $compress == 1 ]; then
 
@@ -94,17 +96,55 @@ if [ $compress == 1 ]; then
 
     # Compress PL files 
     echo -e "\n======== Compressing pressure level files =======" 
-    parallel -j ${ncpus} ~/eccodes/bin/grib_set -s packingType=grid_second_order {= '$arg' =} \
-        ./Data/Split_Data_Files/Compressed/{/} :::: pl_split_data_file_list.txt \
-        &> pl_compress.log
+    parallel -j ${ncpus} ~/eccodes/bin/grib_set -s edition=2,packingType=${comp_type} \
+        {= '$arg' =} ./Data/Split_Data_Files/Compressed/{/}_1 :::: \
+        pl_split_data_file_list.txt &> pl_compress.log
     echo "Done."
 
     # Compress SL files 
     echo -e "\n======== Compressing surface level files =======" 
-    parallel -j ${ncpus} ~/eccodes/bin/grib_set -s packingType=grid_second_order {= '$arg' =} \
-        ./Data/Split_Data_Files/Compressed/{/} :::: sl_split_data_file_list.txt \
+    parallel -j ${ncpus} ~/eccodes/bin/grib_set -s \
+        localDefinitionNumber=1,edition=2,packingType=${comp_type} {= '$arg' =} \
+        ./Data/Split_Data_Files/Compressed/{/}_1 :::: sl_split_data_file_list.txt \
         &> sl_compress.log
     echo "Done."
+    
+    # Rename files to remove "_1"
+    for filename in ./Data/Split_Data_Files/Compressed/*_1; do 
+        mv "$filename" "${filename/_1/}" 2>/dev/null
+    done
+    
+    # Make the rules files to fix SL data soil levels  
+    echo "# Fix bottom level of the lowest soil layer" > rules_file_flvl_sl.txt
+    echo "if ((parameterNumber==42) || (parameterNumber==236))" >> rules_file_flvl_sl.txt
+    echo "{" >> rules_file_flvl_sl.txt
+    echo "set bottomLevel=255;" >> rules_file_flvl_sl.txt
+    echo "}" >> rules_file_flvl_sl.txt
+    echo "" >> rules_file_flvl_sl.txt
+    echo "# Convert level units to cm (not m) for all the soil layers' levels" >> rules_file_flvl_sl.txt
+    echo "if ((39<=parameterNumber && parameterNumber<=42) || (parameterNumber==139) || (parameterNumber==170) || (parameterNumber==183) || (parameterNumber==236))" >> rules_file_flvl_sl.txt
+    echo "{" >> rules_file_flvl_sl.txt 
+    echo "set scaleFactorOfFirstFixedSurface=2;" >> rules_file_flvl_sl.txt
+    echo "set scaleFactorOfSecondFixedSurface=2;" >> rules_file_flvl_sl.txt      
+    echo "}" >> rules_file_flvl_sl.txt
+    echo "">> rules_file_flvl_sl.txt
+    echo "# Write grib file" >> rules_file_flvl_sl.txt
+    echo "write \"./Data/Split_Data_Files/Compressed/ERA5-[date][time]-sl.grib_1\";" >> rules_file_flvl_sl.txt      
+            
+    # Fix SL soil data
+    echo -e "\n======== Fixing the SL soil data =======" 
+    parallel -j ${ncpus} ~/eccodes/bin/grib_filter rules_file_flvl_sl.txt \
+        "./Data/Split_Data_Files/Compressed/"{/} :::: sl_split_data_file_list.txt \
+        &> sl_flvl.log
+    echo "Done." 
+    
+    # Remove all -sl.grib files
+    rm -rf *-sl.grib
+    
+    # Rename files to remove "_1"
+    for filename in ./Data/Split_Data_Files/Compressed/*_1; do 
+        mv "$filename" "${filename/_1/}" 2>/dev/null
+    done
     
     # Replace uncompressed files with compressed ones, if needed
     if [ $replaceregcomp == 1 ]; then    
