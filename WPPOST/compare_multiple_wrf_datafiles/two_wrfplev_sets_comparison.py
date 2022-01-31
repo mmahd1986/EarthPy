@@ -9,24 +9,9 @@
 get_ipython().run_cell_magic('javascript', '', 'IPython.OutputArea.prototype._should_scroll = function(lines) {\n    return false;\n}')
 
 
-# ###### Save notebook back-up as .py file in the Earthpy ######
-
-# In[4]:
-
-
-# Input data
-BUD = '~/EarthPy/WPPOST/compare_multiple_wrf_datafiles'                                       
-    # Backup folder address.
-    
-# Save notebook back-up as .py file in the Earthpy
-import ipyparams
-nb_name = ipyparams.notebook_name
-om = get_ipython().getoutput('jupyter nbconvert {nb_name} --to python --output-dir={BUD}    ')
-
-
 # ###### Calculate differences ######
 
-# In[7]:
+# In[ ]:
 
 
 # Clear variables
@@ -38,7 +23,14 @@ file_1 = "/scratch/p/peltier/mahdinia/WRF4.3_Verification_Runs/ERA5_RC44/wrfplev
     # First case's wrfinput file.
 file_2 = "/scratch/p/peltier/mahdinia/WRF4.3_Verification_Runs/WRFTools_RC9/wrfout/wrfplev3d_d01_1979-02-01_00:00:00.nc"
     # Second case's wrfinput file.
-        
+BUD = '~/EarthPy/WPPOST/compare_multiple_wrf_datafiles'                                       
+    # Backup folder address.
+    
+# Save notebook back-up as .py file in the Earthpy
+import ipyparams
+nb_name = ipyparams.notebook_name
+om = get_ipython().getoutput('jupyter nbconvert {nb_name} --to python --output-dir={BUD} ')
+    
 # Turn off annoying warnings
 import warnings
 warnings.filterwarnings('ignore')
@@ -66,18 +58,22 @@ if not os.path.exists(file_2):
 wrfin_1 = Dataset(file_1)
 wrfin_2 = Dataset(file_2)
 
+# Getting number of time steps
+V2 = to_np(getvar(wrfin_2,'T2',timeidx=ALL_TIMES)) 
+NT = V2.shape[0] 
+del V2
+
 # ============== Calculate and print array diff values ==============
 
 # Prompt on screen
 print('\n>>>>>>>>>>>>>>>>>>>>>>>>>> Difference values <<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
 
 # Difference arrays
-minV12_a = np.zeros((27,1)); maxV12_a = np.zeros((27,1))
+minV12_a = np.zeros((NT,27)); maxV12_a = np.zeros((NT,27))
 
 # Go though variables
 c = 0
 for var in ['XLAT','XLONG','Q2','T2','PSFC','U10','V10','ITIMESTEP',     'XTIME','PBLH','P_PL','U_PL','V_PL','T_PL','RH_PL','GHT_PL',     'S_PL','TD_PL','Q_PL','C1H','C2H','C1F','C2F','C3H','C4H',     'C3F','C4F']:
-    minV12 = 1E40; maxV12 = -1E40
     masked = False    
     V1 = to_np(getvar(wrfin_1,var,timeidx=ALL_TIMES))        
     V2 = to_np(getvar(wrfin_2,var,timeidx=ALL_TIMES)) 
@@ -91,7 +87,7 @@ for var in ['XLAT','XLONG','Q2','T2','PSFC','U10','V10','ITIMESTEP',     'XTIME'
         V1 = V1[LR:,:,:]
     elif V1.ndim==4:    
         V1 = V1[LR:,:,:,:]       
-    gc.collect()    
+    gc.collect()   
     if (((isinstance(V1,np.ma.MaskedArray)) and (not(isinstance(V2,np.ma.MaskedArray))))         or
         ((isinstance(V2,np.ma.MaskedArray)) and (not(isinstance(V1,np.ma.MaskedArray))))):
         raise ValueError("Mask inconsistency."
@@ -105,18 +101,23 @@ for var in ['XLAT','XLONG','Q2','T2','PSFC','U10','V10','ITIMESTEP',     'XTIME'
             'Could not unmask ',var,'!')
     dV12 = V1-V2
     del V1, V2
-    gc.collect()   
-    minV12 = np.min([minV12,np.min(dV12)])
-    maxV12 = np.max([maxV12,np.max(dV12)]) 
-    minV12_a[c] = minV12
-    maxV12_a[c] = maxV12          
+    gc.collect()     
+    nd = dV12.ndim
+    temp = dV12
+    for dim in np.arange(nd,0,step=-1):
+        temp = temp.min(axis=dim)
+    minV12_a[:,c] = temp        
+    temp = dV12
+    for dim in np.arange(nd,0,step=-1):
+        temp = temp.max(axis=dim)    
+    maxV12_a[:,c] = temp          
     print('Variable = ',var) 
     if (masked==True):
         print('This var was initially masked and was therefore umasked.')   
-    print('min dV12  =',"{:0.2e}".format(minV12), end=', ')
-    print('max dV12  =',"{:0.2e}".format(maxV12))
+    print('min dV12  =',"{:0.2e}".format(np.min(minV12_a[:,c])), end=', ')
+    print('max dV12  =',"{:0.2e}".format(np.max(maxV12_a[:,c])))
     c = c+1
-    del dV12
+    del dV12, temp
     gc.collect()
 
 # Global min and max

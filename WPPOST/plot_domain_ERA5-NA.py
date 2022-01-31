@@ -3,7 +3,7 @@
 
 # ###### Disable scrolling ######
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().run_cell_magic('javascript', '', 'IPython.OutputArea.prototype._should_scroll = function(lines) {\n    return false;\n}')
@@ -11,7 +11,7 @@ get_ipython().run_cell_magic('javascript', '', 'IPython.OutputArea.prototype._sh
 
 # ###### Plot the domain ######
 
-# In[3]:
+# In[2]:
 
 
 # Clear variables
@@ -24,10 +24,10 @@ JON_domain_file = '/project/p/peltier/mahdinia/Post_Processing/jons_domian.nc'  
 CORDEX_domain_file =     '/scratch/p/peltier/mahdinia/WRF4.3_Verification_Runs/ERA5_RC26/geo_em.d01.nc' # CORDEX domain's file.
 dd = [-199.2,-0.8,-0.3,87.0]                                                       # Download domains extents.
 ref_lon = -100.2; ref_lat = 48.0                                                   # WRF ref_lon and ref_lat.
-range_f_ur = 2.55                                                                  # Plot range factor (unrot).
-tick_f_ur = 1.0455                                                                 # Tick range factor (unrot).
-range_f_rx = 1.3                                                                   # Plot range factor (rot x).
-range_f_ry = 1.05                                                                  # Plot range factor (rot y).
+range_f_r = 2.55                                                                   # Plot range factor (rot).
+tick_f_r = 1.0455                                                                  # Tick range factor (rot).
+range_f_urx = 1.3                                                                  # Plot range fac (unrot x).
+range_f_ury = 1.05                                                                 # Plot range fac (unrot y).
 cmap = 'viridis'                                                                   # Colormap. 
 c_levels = 15                                                                      # Number of contour lvls.
 land_edge_color = [0.55, 0.55, 0.55]                                               # states, etc border colors.   
@@ -141,14 +141,14 @@ cbar = fig.colorbar(c,ax=ax,orientation="vertical",fraction=0.016,     pad=0.02,
 cbar.ax.tick_params(labelsize=14)
 
 # Figure limits
-xmin = range_f_ur*np.min(x); xmax = range_f_ur*np.max(x)
-ymin = range_f_ur*np.min(y); ymax = range_f_ur*np.max(y)
+xmin = range_f_r*np.min(x); xmax = range_f_r*np.max(x)
+ymin = range_f_r*np.min(y); ymax = range_f_r*np.max(y)
 plt.xlim((xmin,xmax)); plt.ylim((ymin,ymax))
 
 # Adjust figure further
 ax.set_title('Rotated Coordiantes',fontsize=18,pad=10)
-xmin_t = xmin*tick_f_ur; xmax_t = xmax*tick_f_ur;
-ymin_t = ymin*tick_f_ur; ymax_t = ymax*tick_f_ur;
+xmin_t = xmin*tick_f_r; xmax_t = xmax*tick_f_r;
+ymin_t = ymin*tick_f_r; ymax_t = ymax*tick_f_r;
 plt.xticks(np.arange(xmin_t+(xmax_t-xmin_t)/16-1e-10,     xmax_t-(xmax_t-xmin_t)/16+1e-10,step=(xmax_t-xmin_t)/8),fontsize=14)
 plt.yticks(np.arange(ymin_t+(ymax_t-ymin_t)/16-1e-10,     ymax_t-(ymax_t-ymin_t)/16+1e-10,step=(ymax_t-ymin_t)/8),fontsize=14)
 
@@ -382,9 +382,9 @@ lon_ju[lon_ju>0] = lon_ju[lon_ju>0]-360
 plt.plot(lon_ju-ref_lon,lat_ju,'k-.',linewidth=3)
 
 # Figure limits
-xmin_l = range_f_rx*np.min(lons); xmax_l = range_f_rx*np.max(lons)
-ymin_l = (dd[3]+dd[2])/2-range_f_ry*(dd[3]-dd[2])/2 
-ymax_l = (dd[3]+dd[2])/2+range_f_ry*(dd[3]-dd[2])/2
+xmin_l = range_f_urx*np.min(lons); xmax_l = range_f_urx*np.max(lons)
+ymin_l = (dd[3]+dd[2])/2-range_f_ury*(dd[3]-dd[2])/2 
+ymax_l = (dd[3]+dd[2])/2+range_f_ury*(dd[3]-dd[2])/2
 plt.xlim((xmin_l,xmax_l)); plt.ylim((ymin_l,ymax_l))
 
 # Figure labels
